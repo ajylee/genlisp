@@ -102,6 +102,14 @@ class If(CompoundExpression):
     else_clause: Expression = attr.ib()
 
 
+@attr.s(auto_attribs=True)
+class Let(CompoundExpression):
+    mapping: typing.List[typing.Tuple[Variable, Expression]] = attr.ib()
+    body: Expression = attr.ib()
+    closed: typing.Mapping[Variable, Expression] = attr.Factory(dict)
+    recur: typing.Optional[Variable] = attr.ib(default=None)
+
+
 aa, bb = (Variable(name) for name in 'ab')
 Or_ = Lambda((aa, bb), If(aa, True, bb), name='Or_')
 del aa, bb
@@ -130,7 +138,7 @@ def evaluate(expr: Expression, variable_mapping: dict = {}):
         child_closed = {}
         child_closed.update(variable_mapping)
         child_closed.update(expr.closed)
-        out = Lambda(expr.variables, expr.body, child_closed, expr.name)
+        out = Lambda(expr.variables, expr.body, closed=child_closed, name=expr.name)
         return out
     elif isinstance(expr, If):
         if evaluate(expr.condition, variable_mapping):
@@ -138,11 +146,20 @@ def evaluate(expr: Expression, variable_mapping: dict = {}):
         else:
             return evaluate(expr.else_clause, variable_mapping)
     elif isinstance(expr, Variable):
-        value = variable_mapping[expr]
-        if isinstance(value, Lambda):
-            return evaluate(value, variable_mapping)  # ensures closing over
-        else:
-            return value
+        return variable_mapping[expr]
+    elif isinstance(expr, Let):
+        variables, values = map(tuple, zip(*expr.mapping))
+        child_mapping = {}
+        child_mapping.update(variable_mapping)
+        child_mapping.update(dict(expr.mapping))
+        # NOTE: need to pass child_mapping so that when values are evaluated, they get the Let mapping.
+        # This makes recursion possible. If one of the values is a Lambda, it closes over the Let mapping.
+        # Also note that the Lambda that the Let expands to does not actually need to close over `variable_mapping`
+        # since it is immediately evaluated with those variables in scope.
+        let_lambda = Lambda(variables, expr.body, closed=variable_mapping, name='let')
+        if expr.recur:
+            child_mapping[expr.recur] = let_lambda  # enables recursive let
+        return evaluate(Beta(let_lambda, values), child_mapping)
     else:
         return expr
 
@@ -150,8 +167,3 @@ def evaluate(expr: Expression, variable_mapping: dict = {}):
 def validate_solution(expr: Expression):
     return ((type(expr) in usable)
             and ((not type(expr) in python_function) or all(validate_solution(sub) for sub in expr)))
-
-
-def let(mapping, body):
-    variables, values = map(tuple, zip(*mapping))
-    return Beta(Lambda(variables, body, name='let'), values)
