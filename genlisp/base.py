@@ -60,6 +60,14 @@ class CompoundExpression(abc.ABC):
     pass
 
 
+@attr.s(frozen=True, repr=False)
+class Token(CompoundExpression):
+    name: str = attr.ib(hash=True)
+
+    def __repr__(self):
+        return self.name
+
+
 # Expression includes Lambda and Beta
 Expression = typing.Union[BaseType, CompoundExpression]
 
@@ -79,7 +87,7 @@ class Variable:
         return self.name
 
 
-Nand = CompoundExpression()
+Nand = Token(name='Nand')
 
 
 @attr.s(auto_attribs=True)
