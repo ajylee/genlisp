@@ -147,7 +147,7 @@ def evaluate(expr: Expression, variable_mapping: typing.Mapping[Variable, Expres
     elif isinstance(expr, Variable):
         return variable_mapping[expr]
     elif isinstance(expr, Let):
-        variables, values = map(tuple, zip(*expr.mapping))
+        variables, values = map(tuple, zip(*expr.mapping.items()))
         child_mapping = tz.merge(variable_mapping, expr.mapping)
         # NOTE: need to pass child_mapping so that when values are evaluated, they get the Let mapping.
         # This makes recursion possible. If one of the values is a Lambda, it closes over the Let mapping.
