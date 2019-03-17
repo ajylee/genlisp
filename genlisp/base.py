@@ -50,6 +50,8 @@ import typing
 import abc
 import attr
 from uuid import uuid4, UUID
+import cytoolz as tz
+
 
 BaseType = typing.Union[bool]
 
@@ -104,7 +106,7 @@ class If(CompoundExpression):
 
 @attr.s(auto_attribs=True)
 class Let(CompoundExpression):
-    mapping: typing.List[typing.Tuple[Variable, Expression]] = attr.ib()
+    mapping: typing.Mapping[Variable, Expression] = attr.ib()
     body: Expression = attr.ib()
     closed: typing.Mapping[Variable, Expression] = attr.Factory(dict)
     recur: typing.Optional[Variable] = attr.ib(default=None)
@@ -118,26 +120,23 @@ usable = {Nand, bool, Variable, Lambda}
 targets = [Or_]
 
 
-def evaluate(expr: Expression, variable_mapping: dict = {}):
+def evaluate(expr: Expression, variable_mapping: typing.Mapping[Variable, Expression] = {}):
     if isinstance(expr, Beta):
         evaluated_head = evaluate(expr.head, variable_mapping)
         evaluated_args = (evaluate(x, variable_mapping) for x in expr.args)
         evaluated_kwargs = {k: evaluate(x, variable_mapping) for k, x in expr.kwargs.items()}
         if isinstance(evaluated_head, Lambda):
             ll = evaluated_head
-            child_mapping = {}
-            child_mapping.update(variable_mapping)
-            child_mapping.update(ll.closed)
-            child_mapping.update(zip(ll.variables, evaluated_args))
-            child_mapping.update(evaluated_kwargs)
+            child_mapping = tz.merge(variable_mapping,
+                                     ll.closed,
+                                     dict(zip(ll.variables, evaluated_args)),
+                                     evaluated_kwargs)  # type: typing.Dict[Variable, Expression]
             # TODO: make sure have enough values, or use currying
             return evaluate(ll.body, variable_mapping=child_mapping)
         else:
             return python_function[expr.head](*evaluated_args, **{k.name: v for k,v in evaluated_kwargs.items()})
     elif isinstance(expr, Lambda):
-        child_closed = {}
-        child_closed.update(variable_mapping)
-        child_closed.update(expr.closed)
+        child_closed = tz.merge(variable_mapping, expr.closed)
         out = Lambda(expr.variables, expr.body, closed=child_closed, name=expr.name)
         return out
     elif isinstance(expr, If):
@@ -149,9 +148,7 @@ def evaluate(expr: Expression, variable_mapping: dict = {}):
         return variable_mapping[expr]
     elif isinstance(expr, Let):
         variables, values = map(tuple, zip(*expr.mapping))
-        child_mapping = {}
-        child_mapping.update(variable_mapping)
-        child_mapping.update(dict(expr.mapping))
+        child_mapping = tz.merge(variable_mapping, expr.mapping)
         # NOTE: need to pass child_mapping so that when values are evaluated, they get the Let mapping.
         # This makes recursion possible. If one of the values is a Lambda, it closes over the Let mapping.
         # Also note that the Lambda that the Let expands to does not actually need to close over `variable_mapping`
