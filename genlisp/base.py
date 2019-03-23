@@ -169,6 +169,36 @@ def evaluate(expr: Expression, variable_mapping: typing.Mapping[Variable, Expres
         return expr
 
 
-def validate_solution(expr: Expression):
-    return ((type(expr) in usable)
-            and ((not type(expr) in python_function) or all(validate_solution(sub) for sub in expr)))
+def validate_solution(expr: Expression, usable_types, usable_values) -> typing.Tuple[bool, typing.Optional[Expression]]:
+    def subs(expr) -> typing.Iterable[Expression]:
+        if isinstance(expr, Beta):
+            yield expr.head
+            yield from expr.args
+            yield from expr.kwargs.values()
+        elif isinstance(expr, Lambda):
+            yield expr.body
+        elif isinstance(expr, If):
+            yield from (expr.condition, expr.if_clause, expr.else_clause)
+        elif isinstance(expr, Let):
+            yield from expr.mapping.values()
+            yield expr.body
+        else:
+            return
+
+    try:
+        if expr in usable_values:
+            return True, None
+    except TypeError:  # catch hash error
+        pass
+
+    ok_type = type(expr) in usable_types
+
+    if not ok_type:
+        return False, expr
+    else:
+        for sub in subs(expr):
+            ok, witness = validate_solution(sub, usable_types, usable_values)
+            if not ok:
+                return ok, witness
+        else:
+            return True, None
