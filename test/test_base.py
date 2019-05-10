@@ -68,14 +68,16 @@ def test_shadowing():
 def test_recursive():
     aa, ll = (Variable(name) for name in 'al')
 
-    ll_value = Lambda((aa,),
-                      If(aa, aa, Beta(ll, (Beta(Or_, (True, aa)),))),
-                      name='recursive')
+    bindings = {
+        ll: Lambda((aa,),
+                   If(aa, aa, Beta(ll, (Beta(Or_, (True, aa)),))),
+                   name='recursive')
+    }
 
-    ee = Let({ll: ll_value}, Beta(ll, (False,)))
+    ee = Let(bindings, Beta(ll, (False,)))
     assert evaluate(ee)
 
-    ee2 = Let({ll: ll_value}, ll)
+    ee2 = Let(bindings, ll)
     assert ll in evaluate(ee2).closed
     assert evaluate(Beta(ee2, (False,)))
 
