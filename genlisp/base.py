@@ -51,6 +51,7 @@ import abc
 import attr
 from uuid import uuid4, UUID
 import cytoolz as tz
+from .frozendict import frozendict
 
 
 BaseType = typing.Union[bool]
@@ -94,7 +95,7 @@ Nand = Token(name='Nand')
 class Lambda(CompoundExpression):
     variables: typing.Tuple[Variable, ...] = attr.ib()
     body: Expression = attr.ib()
-    closed: typing.Mapping[Variable, Expression] = attr.Factory(dict)
+    closed: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
     name: str = attr.ib(default=None)
 
 
@@ -102,7 +103,7 @@ class Lambda(CompoundExpression):
 class Beta(CompoundExpression):
     head: typing.Union[Expression] = attr.ib()  # must return callable type
     args: typing.Tuple[Expression, ...] = attr.ib()
-    kwargs: typing.Mapping[Variable, Expression] = attr.ib(factory=dict)
+    kwargs: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
 
 
 @attr.s(auto_attribs=True)
@@ -114,9 +115,9 @@ class If(CompoundExpression):
 
 @attr.s(auto_attribs=True)
 class Let(CompoundExpression):
-    mapping: typing.Mapping[Variable, Expression] = attr.ib()
+    mapping: typing.Mapping[Variable, Expression] = attr.ib(converter=frozendict)
     body: Expression = attr.ib()
-    closed: typing.Mapping[Variable, Expression] = attr.Factory(dict)
+    closed: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
     recur: typing.Optional[Variable] = attr.ib(default=None)
 
 
