@@ -118,7 +118,7 @@ class Let(CompoundExpression):
     mapping: typing.Mapping[Variable, Expression] = attr.ib(converter=frozendict)
     body: Expression = attr.ib()
     closed: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
-    recur: typing.Optional[Variable] = attr.ib(default=None)
+    #recur: typing.Optional[Variable] = attr.ib(default=None)
 
 
 aa, bb = (Variable(name) for name in 'ab')
@@ -163,8 +163,8 @@ def evaluate(expr: Expression, variable_mapping: typing.Mapping[Variable, Expres
         # Also note that the Lambda that the Let expands to does not actually need to close over `variable_mapping`
         # since it is immediately evaluated with those variables in scope.
         let_lambda = Lambda(variables, expr.body, closed=variable_mapping, name='let')
-        if expr.recur:
-            child_mapping[expr.recur] = let_lambda  # enables recursive let
+        #if expr.recur:
+        #    child_mapping[expr.recur] = let_lambda  # enables recursive let
         return evaluate(Beta(let_lambda, values), child_mapping)
     else:
         return expr
