@@ -56,8 +56,8 @@ class frozendict(Mapping, Hashable):
         except AttributeError:
             items = mapping_like
 
-        self._set = frozenset([
-            Item(k, v) for k, v in items])
+        self._set = frozenset(
+            Item(k, v) for k, v in items)
 
         self._hash = None
 
@@ -67,7 +67,10 @@ class frozendict(Mapping, Hashable):
         return self._hash
 
     def __getitem__(self, key):
-        return first(frozenset((_FrozenDictLookupKey(key),)).intersection(self._set)).value
+        try:
+            return first(frozenset((_FrozenDictLookupKey(key),)).intersection(self._set)).value
+        except StopIteration:
+            raise KeyError(key)
 
     def __iter__(self):
         for item in iter(self._set):
