@@ -55,3 +55,11 @@ def test_values():
             assert vv in bb.values()
 
         assert set(aa.values()) == set(bb.values())
+
+
+def test_repeated_keys():
+    assert len(frozendict([(1, 2), (1, 3)]).items()) == 1
+
+
+def test_get():
+    assert frozendict({1: 2}).get(2, 3) == 3
