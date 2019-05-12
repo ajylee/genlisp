@@ -6,6 +6,9 @@ ever be used if immutable.Map is unavailable.
 
 from typing import Mapping, Hashable, NamedTuple, Any
 from itertools import chain
+from cytoolz import merge
+
+from types import MappingProxyType
 
 
 class _frozendict(Mapping, Hashable):
@@ -13,8 +16,7 @@ class _frozendict(Mapping, Hashable):
     tuples_memo = None
 
     def __init__(self, mapping_like=(), **kwargs):
-        self._dict = dict(mapping_like)
-        self._dict.update(kwargs)
+        self._dict = self.proxy = MappingProxyType(merge(dict(mapping_like), kwargs))
         self._hash = None
 
     def __hash__(self):
