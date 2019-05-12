@@ -51,6 +51,7 @@ import typing
 import abc
 import attr
 from uuid import uuid4, UUID
+from itertools import chain
 import cytoolz as tz
 from .frozendict import frozendict
 
@@ -143,16 +144,17 @@ def evaluate(expr: Expression,
         evaluated_kwargs = {k: evaluate(x, variable_mapping) for k, x in expr.kwargs.items()}
         if isinstance(evaluated_head, Lambda):
             ll = evaluated_head
-            child_mapping = tz.merge(variable_mapping,
-                                     ll.closed,
-                                     dict(zip(ll.variables, evaluated_args)),
-                                     evaluated_kwargs)  # type: typing.Dict[Variable, Expression]
+            child_mapping = variable_mapping.update(chain(
+                ll.closed.items(),
+                zip(ll.variables, evaluated_args),
+                evaluated_kwargs.items(),
+            ))  # type: Intersection[Mapping[Variable, Expression], frozendict]
             # TODO: make sure have enough values, or use currying
             return evaluate(ll.body, variable_mapping=child_mapping)
         else:
             return python_function[expr.head](*evaluated_args, **{k.name: v for k,v in evaluated_kwargs.items()})
     elif isinstance(expr, Lambda):
-        child_closed = tz.merge(variable_mapping, expr.closed)
+        child_closed = variable_mapping.update(expr.closed)
         out = Lambda(expr.variables, expr.body, closed=child_closed, name=expr.name)
         return out
     elif isinstance(expr, If):
@@ -164,7 +166,7 @@ def evaluate(expr: Expression,
         return variable_mapping[expr]
     elif isinstance(expr, Let):
         variables, values = map(tuple, zip(*expr.mapping.items()))
-        child_mapping = tz.merge(variable_mapping, expr.mapping)
+        child_mapping = variable_mapping.update(expr.mapping)
         # NOTE: need to pass child_mapping so that when values are evaluated, they get the Let mapping.
         # This makes recursion possible. If one of the values is a Lambda, it closes over the Let mapping.
         # Also note that the Lambda that the Let expands to does not actually need to close over `variable_mapping`
