@@ -1,4 +1,4 @@
-from genlisp.frozendict import frozendict
+from genlisp.frozendict import _frozendict as frozendict
 import random
 
 test_dicts = [{1: 2},

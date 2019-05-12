@@ -8,7 +8,7 @@ from typing import Mapping, Hashable, NamedTuple, Any
 from itertools import chain
 
 
-class frozendict(Mapping, Hashable):
+class _frozendict(Mapping, Hashable):
     """Set tuples_memo if you want to memoize it"""
     tuples_memo = None
 
@@ -70,3 +70,8 @@ def hash_2(dd):
     for tt in dd.items():
         hh ^= hash(tt)
     return hh
+
+try:
+    from immutables import Map as frozendict
+except ImportError:
+    frozendict = _frozendict
