@@ -5,6 +5,7 @@ ever be used if immutable.Map is unavailable.
 """
 
 from typing import Mapping, Hashable, NamedTuple, Any
+from itertools import chain
 
 
 class frozendict(Mapping, Hashable):
@@ -47,6 +48,14 @@ class frozendict(Mapping, Hashable):
 
     def keys(self):
         return self._dict.keys()
+
+    def update(self, mapping_like, **kwargs):
+        try:
+            items = mapping_like.items()
+        except AttributeError:
+            items = mapping_like
+
+        return __class__(chain(self.items(), items))
 
 
 # for benchmarking

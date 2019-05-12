@@ -63,3 +63,10 @@ def test_repeated_keys():
 
 def test_get():
     assert frozendict({1: 2}).get(2, 3) == 3
+
+
+def test_update():
+    aa = frozendict({1: 2})
+    bb = aa.update({3: 4})
+    assert bb == {1: 2, 3: 4}
+    assert aa == frozendict({1: 2})
