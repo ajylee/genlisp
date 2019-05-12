@@ -46,6 +46,7 @@ Therefore, if the "closing over" has occurred, scoping becomes lexical.
 
 """
 
+from typing import Union, Mapping
 import typing
 import abc
 import attr
@@ -53,6 +54,11 @@ from uuid import uuid4, UUID
 import cytoolz as tz
 from .frozendict import frozendict
 
+
+# abuse Union as Intersection until Intersection is supported
+# Union fools the type checker just enough to behave acceptably as a stand-in for
+# Intersection
+Intersection = Union
 
 BaseType = typing.Union[bool]
 
@@ -129,7 +135,8 @@ usable = {Nand, bool, Variable, Lambda}
 targets = [Or_]
 
 
-def evaluate(expr: Expression, variable_mapping: typing.Mapping[Variable, Expression] = {}):
+def evaluate(expr: Expression,
+             variable_mapping: Intersection[Mapping[Variable, Expression], frozendict] = frozendict()):
     if isinstance(expr, Beta):
         evaluated_head = evaluate(expr.head, variable_mapping)
         evaluated_args = (evaluate(x, variable_mapping) for x in expr.args)
