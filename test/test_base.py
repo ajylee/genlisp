@@ -5,7 +5,7 @@ import itertools
 def test_evaluate():
     aa, bb = (Variable() for _ in range(2))
     ee = Beta(Or_, (aa, bb))
-    vvs = {aa: True, bb: False}
+    vvs = frozendict({aa: True, bb: False})
     result = evaluate(ee, variable_mapping=vvs)
     assert result == vvs[aa] or vvs[bb]
 
