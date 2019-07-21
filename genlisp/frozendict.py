@@ -4,7 +4,7 @@ granting access to it. However, this implementation of frozendict will probably 
 ever be used if immutable.Map is unavailable.
 """
 
-from typing import Mapping, Hashable, NamedTuple, Any
+from typing import Mapping, Hashable
 from itertools import chain
 from cytoolz import merge
 
@@ -57,7 +57,7 @@ class _frozendict(Mapping, Hashable):
         except AttributeError:
             items = mapping_like
 
-        return __class__(chain(self.items(), items))
+        return __class__(chain(self.items(), items, kwargs.items()))
 
 
 # for benchmarking
