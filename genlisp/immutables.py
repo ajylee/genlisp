@@ -1,9 +1,3 @@
-"""
-This could be optimized by storing an internal `types.MappingProxyType` and
-granting access to it. However, this implementation of frozendict will probably only
-ever be used if immutable.Map is unavailable.
-"""
-
 from typing import Mapping, Hashable
 from itertools import chain
 from cytoolz import merge
@@ -12,7 +6,11 @@ from types import MappingProxyType
 
 
 class _ImmutableMap(Mapping, Hashable):
-    """Set tuples_memo if you want to memoize it"""
+    """Set tuples_memo if you want to memoize it
+
+    This could be optimized directly using the proxy `types.MappingProxyType` whenever
+    hashing is not needed. However, that would break interchangeability with `immutables.Map`
+    """
     tuples_memo = None
 
     def __init__(self, mapping_like=(), **kwargs):
