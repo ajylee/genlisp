@@ -217,7 +217,7 @@ Or_ = Lambda((aa, bb), If(aa, True, bb), name='Or_')
 del aa, bb
 Nand = FunctionToken(name='Nand', variables=(Variable('a'), Variable('b')))
 python_function = {Nand: lambda a, b: not (a and b)}
-usable = {Nand, bool, Variable, Lambda}
+usable = {Nand, True, False, Variable, Lambda}
 targets = [Or_]
 
 
