@@ -32,7 +32,7 @@ class _ImmutableMap(Mapping, Hashable):
         return len(self._dict)
 
     def __repr__(self):
-        return 'frozendict(' + repr(self._dict) + ')'
+        return __class__.__name__ + '(' + repr(dict(self._dict)) + ')'
 
     def tuples(self):
         if self.tuples_memo is None:
