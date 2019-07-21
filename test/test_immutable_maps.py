@@ -1,4 +1,4 @@
-from genlisp.frozendict import _frozendict as frozendict
+from genlisp.immutables import _ImmutableMap as ImmutableMap
 import random
 
 test_dicts = [{1: 2},
@@ -13,17 +13,17 @@ test_dicts = [{1: 2},
 
 def test_get():
     for aa in test_dicts:
-        bb = frozendict(aa)
+        bb = ImmutableMap(aa)
         for kk in aa:
             assert aa[kk] == bb[kk]
 
 
 def test_eq_and_hash():
-    frozen = [frozendict(x) for x in test_dicts]
+    frozen = [ImmutableMap(x) for x in test_dicts]
 
     for ii, aa in enumerate(test_dicts):  # type: (int, dict)
-        bb = frozendict(aa)
-        cc = frozendict(aa)
+        bb = ImmutableMap(aa)
+        cc = ImmutableMap(aa)
         assert bb == cc
         assert hash(bb) == hash(cc)
         for jj, bb_jj in enumerate(frozen):
@@ -36,7 +36,7 @@ def test_eq_and_hash():
 
 def test_items():
     for aa in test_dicts:
-        bb = frozendict(aa)
+        bb = ImmutableMap(aa)
         for item in aa.items():
             assert item in bb.items()
 
@@ -46,7 +46,7 @@ def test_items():
 
 def test_values():
     for aa in test_dicts:
-        bb = frozendict(aa)
+        bb = ImmutableMap(aa)
 
         # loop would grow as O(n^2) if we didn't break early
         for cnt, vv in enumerate(aa.values()):
@@ -58,15 +58,15 @@ def test_values():
 
 
 def test_repeated_keys():
-    assert len(frozendict([(1, 2), (1, 3)]).items()) == 1
+    assert len(ImmutableMap([(1, 2), (1, 3)]).items()) == 1
 
 
 def test_get():
-    assert frozendict({1: 2}).get(2, 3) == 3
+    assert ImmutableMap({1: 2}).get(2, 3) == 3
 
 
 def test_update():
-    aa = frozendict({1: 2})
+    aa = ImmutableMap({1: 2})
     bb = aa.update({3: 4})
     assert bb == {1: 2, 3: 4}
-    assert aa == frozendict({1: 2})
+    assert aa == ImmutableMap({1: 2})

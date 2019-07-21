@@ -11,7 +11,7 @@ from cytoolz import merge
 from types import MappingProxyType
 
 
-class _frozendict(Mapping, Hashable):
+class _ImmutableMap(Mapping, Hashable):
     """Set tuples_memo if you want to memoize it"""
     tuples_memo = None
 
@@ -73,7 +73,8 @@ def hash_2(dd):
         hh ^= hash(tt)
     return hh
 
+
 try:
-    from immutables import Map as frozendict
+    from immutables import Map as ImmutableMap
 except ImportError:
-    frozendict = _frozendict
+    ImmutableMap = _ImmutableMap

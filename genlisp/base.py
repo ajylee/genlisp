@@ -52,7 +52,7 @@ import abc
 import attr
 from uuid import uuid4, UUID
 from itertools import chain
-from .frozendict import frozendict
+from .immutables import ImmutableMap
 
 # abuse Union as Intersection until Intersection is supported
 # Union fools the type checker just enough to behave acceptably as a stand-in for
@@ -102,7 +102,7 @@ class Variable:
 class Lambda(CompoundExpression):
     variables: Tuple[Variable, ...] = attr.ib()
     body: Expression = attr.ib()
-    closed: Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
+    closed: Mapping[Variable, Expression] = attr.ib(factory=ImmutableMap, converter=ImmutableMap)
     name: str = attr.ib(default=None)
 
 
@@ -110,7 +110,7 @@ class Lambda(CompoundExpression):
 class Beta(CompoundExpression):
     head: Union[Expression] = attr.ib()  # must return callable type
     args: Tuple[Expression, ...] = attr.ib(factory=tuple)
-    kwargs: Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
+    kwargs: Mapping[Variable, Expression] = attr.ib(factory=ImmutableMap, converter=ImmutableMap)
 
 
 @attr.s(auto_attribs=True)
@@ -122,9 +122,9 @@ class If(CompoundExpression):
 
 @attr.s(auto_attribs=True)
 class Let(CompoundExpression):
-    mapping: Mapping[Variable, Expression] = attr.ib(converter=frozendict)
+    mapping: Mapping[Variable, Expression] = attr.ib(converter=ImmutableMap)
     body: Expression = attr.ib()
-    closed: Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
+    closed: Mapping[Variable, Expression] = attr.ib(factory=ImmutableMap, converter=ImmutableMap)
     # recur: typing.Optional[Variable] = attr.ib(default=None)
 
 
@@ -222,7 +222,7 @@ targets = [Or_]
 
 
 def evaluate(expr: Expression,
-             variable_mapping: Intersection[Mapping[Variable, Expression], frozendict] = frozendict()):
+             variable_mapping: Intersection[Mapping[Variable, Expression], ImmutableMap] = ImmutableMap()):
     if isinstance(expr, Beta):
         evaluated_head = evaluate(expr.head, variable_mapping)
         evaluated_args = (evaluate(x, variable_mapping) for x in expr.args)
@@ -233,7 +233,7 @@ def evaluate(expr: Expression,
                 ll.closed.items(),
                 zip(ll.variables, evaluated_args),
                 evaluated_kwargs.items(),
-            ))  # type: Intersection[Mapping[Variable, Expression], frozendict]
+            ))  # type: Intersection[Mapping[Variable, Expression], ImmutableMap]
             # TODO: make sure have enough values, or use currying
             return evaluate(ll.body, variable_mapping=child_mapping)
         elif isinstance(evaluated_head, FunctionToken):
