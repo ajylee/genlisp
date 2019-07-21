@@ -46,22 +46,20 @@ Therefore, if the "closing over" has occurred, scoping becomes lexical.
 
 """
 
-from typing import Union, Mapping
+from typing import Union, Mapping, Optional, Any, List, Tuple, TypeVar
 import typing
 import abc
 import attr
 from uuid import uuid4, UUID
 from itertools import chain
-import cytoolz as tz
 from .frozendict import frozendict
-
 
 # abuse Union as Intersection until Intersection is supported
 # Union fools the type checker just enough to behave acceptably as a stand-in for
 # Intersection
 Intersection = Union
 
-BaseType = typing.Union[bool]
+BaseType = Union[bool]
 
 
 class CompoundExpression(abc.ABC):
@@ -76,8 +74,13 @@ class Token(CompoundExpression):
         return self.name
 
 
+@attr.s(frozen=True, repr=False)
+class FunctionToken(Token):
+    variables: Tuple['Variable', ...] = attr.ib(hash=True)
+
+
 # Expression includes Lambda and Beta
-Expression = typing.Union[BaseType, CompoundExpression]
+Expression = Union[Token, BaseType, CompoundExpression]
 
 
 class Variable:
@@ -95,22 +98,19 @@ class Variable:
         return self.name
 
 
-Nand = Token(name='Nand')
-
-
 @attr.s(auto_attribs=True)
 class Lambda(CompoundExpression):
-    variables: typing.Tuple[Variable, ...] = attr.ib()
+    variables: Tuple[Variable, ...] = attr.ib()
     body: Expression = attr.ib()
-    closed: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
+    closed: Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
     name: str = attr.ib(default=None)
 
 
 @attr.s(auto_attribs=True)
 class Beta(CompoundExpression):
-    head: typing.Union[Expression] = attr.ib()  # must return callable type
-    args: typing.Tuple[Expression, ...] = attr.ib()
-    kwargs: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
+    head: Union[Expression] = attr.ib()  # must return callable type
+    args: Tuple[Expression, ...] = attr.ib(factory=tuple)
+    kwargs: Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
 
 
 @attr.s(auto_attribs=True)
@@ -122,16 +122,101 @@ class If(CompoundExpression):
 
 @attr.s(auto_attribs=True)
 class Let(CompoundExpression):
-    mapping: typing.Mapping[Variable, Expression] = attr.ib(converter=frozendict)
+    mapping: Mapping[Variable, Expression] = attr.ib(converter=frozendict)
     body: Expression = attr.ib()
-    closed: typing.Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
-    #recur: typing.Optional[Variable] = attr.ib(default=None)
+    closed: Mapping[Variable, Expression] = attr.ib(factory=frozendict, converter=frozendict)
+    # recur: typing.Optional[Variable] = attr.ib(default=None)
 
+
+@attr.s(auto_attribs=True)
+class ExpressionModel:
+    subject: typing.Callable[[Any], Expression]
+    components: Mapping
+
+    def required_components(self):
+        return frozenset(
+            c.name for c in self.components.values() if c.required
+        )
+
+    @staticmethod
+    def from_subject_and_component_list(subject, components: List['ComponentMetadata']) -> 'ExpressionModel':
+        em = ExpressionModel(subject=subject,
+                             components={cc.name: cc for cc in components})
+        for cc in components:
+            cc.parent = em
+
+        return em
+
+
+@attr.s(auto_attribs=True)
+class InspectableType:
+    """Python `typing` annotations do not allow inspection. Use this instead.
+
+    See also https://stackoverflow.com/questions/53854463/python-3-7-check-if-type-annotation-is-subclass-of-generic
+    """
+    typing_base: TypeVar
+    args: Tuple[Union['InspectableType', type], ...]
+
+    def to_type_hint(self):
+        args_to_type_hint = tuple(
+            a.to_type_hint if isinstance(a, InspectableType) else a
+            for a in self.args)
+        return self.typing_base[args_to_type_hint]
+
+
+VariableMapping = InspectableType(Mapping, (Variable, Expression))
+VariableTuple = InspectableType(Tuple, (Variable,))
+GenLispCallable = InspectableType(Union, (Lambda, FunctionToken))
+
+
+@attr.s(auto_attribs=True)
+class ComponentMetadata:
+    name: str
+    typing_: Union[InspectableType, type]  # typing.Generic
+    parent: Optional[ExpressionModel] = None
+    required: bool = False
+    init: Any = None
+
+
+expression_models = {
+    exm.subject: exm for exm in [
+        ExpressionModel.from_subject_and_component_list(
+            subject=Lambda,
+            components=[
+                ComponentMetadata(name='variables', typing_=VariableTuple, required=True, init=tuple),
+                ComponentMetadata(name='body', typing_=Expression, required=True),
+                # ComponentMetadata(name='closed', typing_=typing.Mapping[Variable, Expression]),
+                ComponentMetadata(name='name', typing_=str),
+            ]),
+        ExpressionModel.from_subject_and_component_list(
+            subject=Beta,
+            components=[
+                ComponentMetadata(name='head', typing_=Lambda, required=True),
+                # ComponentMetadata(name='args', typing_=typing.Tuple[Expression, ...]),
+                ComponentMetadata(name='kwargs', typing_=VariableMapping, init=dict)
+            ]),
+        ExpressionModel.from_subject_and_component_list(
+            subject=If,
+            components=[
+                ComponentMetadata(name='condition', typing_=Expression, required=True),
+                ComponentMetadata(name='if_clause', typing_=Expression, required=True),
+                ComponentMetadata(name='else_clause', typing_=Expression, required=True)
+            ]),
+        ExpressionModel.from_subject_and_component_list(
+            subject=Let,
+            components=[
+                ComponentMetadata(name='mapping', typing_=VariableMapping, init=dict, required=True),
+                ComponentMetadata(name='body', typing_=Expression, required=True),
+                # ComponentMetadata(name='closed', typing_=VariableMapping, init=dict)
+            ]),
+    ]
+}
 
 aa, bb = (Variable(name) for name in 'ab')
 Or_ = Lambda((aa, bb), If(aa, True, bb), name='Or_')
 del aa, bb
-python_function = {Nand: lambda x, y: not (x and y)}
+Nand = FunctionToken(name='Nand', variables=(Variable('a'), Variable('b')))
+python_function = {Nand: lambda a, b: not (a and b)}
 usable = {Nand, bool, Variable, Lambda}
 targets = [Or_]
 
@@ -151,8 +236,10 @@ def evaluate(expr: Expression,
             ))  # type: Intersection[Mapping[Variable, Expression], frozendict]
             # TODO: make sure have enough values, or use currying
             return evaluate(ll.body, variable_mapping=child_mapping)
+        elif isinstance(evaluated_head, FunctionToken):
+            return python_function[evaluated_head](*evaluated_args, **{k.name: v for k, v in evaluated_kwargs.items()})
         else:
-            return python_function[expr.head](*evaluated_args, **{k.name: v for k,v in evaluated_kwargs.items()})
+            raise TypeError("{} has invalid type for Beta head".format(evaluated_head))
     elif isinstance(expr, Lambda):
         child_closed = variable_mapping.update(expr.closed)
         out = Lambda(expr.variables, expr.body, closed=child_closed, name=expr.name)
@@ -172,7 +259,7 @@ def evaluate(expr: Expression,
         # Also note that the Lambda that the Let expands to does not actually need to close over `variable_mapping`
         # since it is immediately evaluated with those variables in scope.
         let_lambda = Lambda(variables, expr.body, closed=variable_mapping, name='let')
-        #if expr.recur:
+        # if expr.recur:
         #    child_mapping[expr.recur] = let_lambda  # enables recursive let
         return evaluate(Beta(let_lambda, values), child_mapping)
     else:
