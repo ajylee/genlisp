@@ -180,18 +180,18 @@ def evaluate(expr: Expression,
 
 
 def validate_solution(expr: Expression, usable_types, usable_values) -> typing.Tuple[bool, typing.Optional[Expression]]:
-    def subs(expr) -> typing.Iterable[Expression]:
-        if isinstance(expr, Beta):
-            yield expr.head
-            yield from expr.args
-            yield from expr.kwargs.values()
-        elif isinstance(expr, Lambda):
-            yield expr.body
-        elif isinstance(expr, If):
-            yield from (expr.condition, expr.if_clause, expr.else_clause)
-        elif isinstance(expr, Let):
-            yield from expr.mapping.values()
-            yield expr.body
+    def subs(_expr) -> typing.Iterable[Expression]:
+        if isinstance(_expr, Beta):
+            yield _expr.head
+            yield from _expr.args
+            yield from _expr.kwargs.values()
+        elif isinstance(_expr, Lambda):
+            yield _expr.body
+        elif isinstance(_expr, If):
+            yield from (_expr.condition, _expr.if_clause, _expr.else_clause)
+        elif isinstance(_expr, Let):
+            yield from _expr.mapping.values()
+            yield _expr.body
         else:
             return
 
