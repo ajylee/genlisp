@@ -1,7 +1,7 @@
 # Genlisp
 
 Simple Lisp dialect for codegen. Focuses on simplicity of implementation 
-and ease of using functions in the parent (Python) language.
+and ease of interacting with the Python environment.
 
 
 WARNING:
