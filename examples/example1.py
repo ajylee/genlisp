@@ -4,7 +4,7 @@ from pathlib import Path
 import enum
 from typing import Set, Union, Any, List, Optional, Tuple, Dict, FrozenSet
 import random
-from genlisp.world import ExpressionPlan, ComponentReference
+from genlisp.game import ExpressionPlan, ComponentReference
 from genlisp.immutables import ImmutableMap
 
 import attr
